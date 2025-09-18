@@ -75,11 +75,38 @@ class CurrencyService {
     }
   }
 
-  static List<String> getSupportedCurrencies() {
+  static List<Map<String, String>> getSupportedCurrencies() {
     return [
-      'USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'SEK', 'NZD',
-      'MXN', 'SGD', 'HKD', 'NOK', 'TRY', 'ZAR', 'INR', 'BRL', 'RUB', 'KRW',
-      'PLN', 'DKK', 'CZK', 'HUF', 'ILS', 'CLP', 'PHP', 'AED', 'THB', 'MYR'
+      {'code': 'USD', 'name': 'US Dollar', 'country': 'United States', 'flag': '🇺🇸'},
+      {'code': 'EUR', 'name': 'Euro', 'country': 'European Union', 'flag': '🇪🇺'},
+      {'code': 'GBP', 'name': 'British Pound', 'country': 'United Kingdom', 'flag': '🇬🇧'},
+      {'code': 'JPY', 'name': 'Japanese Yen', 'country': 'Japan', 'flag': '🇯🇵'},
+      {'code': 'CAD', 'name': 'Canadian Dollar', 'country': 'Canada', 'flag': '🇨🇦'},
+      {'code': 'AUD', 'name': 'Australian Dollar', 'country': 'Australia', 'flag': '🇦🇺'},
+      {'code': 'CHF', 'name': 'Swiss Franc', 'country': 'Switzerland', 'flag': '🇨🇭'},
+      {'code': 'CNY', 'name': 'Chinese Yuan', 'country': 'China', 'flag': '🇨🇳'},
+      {'code': 'SEK', 'name': 'Swedish Krona', 'country': 'Sweden', 'flag': '🇸🇪'},
+      {'code': 'NZD', 'name': 'New Zealand Dollar', 'country': 'New Zealand', 'flag': '🇳🇿'},
+      {'code': 'MXN', 'name': 'Mexican Peso', 'country': 'Mexico', 'flag': '🇲🇽'},
+      {'code': 'SGD', 'name': 'Singapore Dollar', 'country': 'Singapore', 'flag': '🇸🇬'},
+      {'code': 'HKD', 'name': 'Hong Kong Dollar', 'country': 'Hong Kong', 'flag': '🇭🇰'},
+      {'code': 'NOK', 'name': 'Norwegian Krone', 'country': 'Norway', 'flag': '🇳🇴'},
+      {'code': 'TRY', 'name': 'Turkish Lira', 'country': 'Turkey', 'flag': '🇹🇷'},
+      {'code': 'ZAR', 'name': 'South African Rand', 'country': 'South Africa', 'flag': '🇿🇦'},
+      {'code': 'INR', 'name': 'Indian Rupee', 'country': 'India', 'flag': '🇮🇳'},
+      {'code': 'BRL', 'name': 'Brazilian Real', 'country': 'Brazil', 'flag': '🇧🇷'},
+      {'code': 'RUB', 'name': 'Russian Ruble', 'country': 'Russia', 'flag': '🇷🇺'},
+      {'code': 'KRW', 'name': 'South Korean Won', 'country': 'South Korea', 'flag': '🇰🇷'},
+      {'code': 'PLN', 'name': 'Polish Zloty', 'country': 'Poland', 'flag': '🇵🇱'},
+      {'code': 'DKK', 'name': 'Danish Krone', 'country': 'Denmark', 'flag': '🇩🇰'},
+      {'code': 'CZK', 'name': 'Czech Koruna', 'country': 'Czech Republic', 'flag': '🇨🇿'},
+      {'code': 'HUF', 'name': 'Hungarian Forint', 'country': 'Hungary', 'flag': '🇭🇺'},
+      {'code': 'ILS', 'name': 'Israeli Shekel', 'country': 'Israel', 'flag': '🇮🇱'},
+      {'code': 'CLP', 'name': 'Chilean Peso', 'country': 'Chile', 'flag': '🇨🇱'},
+      {'code': 'PHP', 'name': 'Philippine Peso', 'country': 'Philippines', 'flag': '🇵🇭'},
+      {'code': 'AED', 'name': 'UAE Dirham', 'country': 'United Arab Emirates', 'flag': '🇦🇪'},
+      {'code': 'THB', 'name': 'Thai Baht', 'country': 'Thailand', 'flag': '🇹🇭'},
+      {'code': 'MYR', 'name': 'Malaysian Ringgit', 'country': 'Malaysia', 'flag': '🇲🇾'},
     ];
   }
 }
