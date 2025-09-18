@@ -27,19 +27,42 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         }
       } else if (value == '=') {
         _calculateResult();
-        if (!_hasError && _result != 'Error') {
+        if (!_hasError && _result != 'Error' && _result != '0') {
           _expression = _result;
         }
       } else {
-        _expression += value;
+        // Prevent consecutive operators
+        if (_isOperator(value) && _expression.isNotEmpty) {
+          String lastChar = _expression.substring(_expression.length - 1);
+          if (_isOperator(lastChar)) {
+            // Replace the last operator with the new one
+            _expression = _expression.substring(0, _expression.length - 1) + value;
+          } else {
+            _expression += value;
+          }
+        } else {
+          _expression += value;
+        }
         _calculateResult();
       }
     });
   }
 
+  bool _isOperator(String char) {
+    return ['+', '-', '×', '÷', '*', '/'].contains(char);
+  }
+
   void _calculateResult() {
     if (_expression.isEmpty) {
       _result = '0';
+      _hasError = false;
+      return;
+    }
+
+    // Check if expression is incomplete (ends with operator)
+    if (_isIncompleteExpression(_expression)) {
+      // Don't show error for incomplete expressions, just keep current result
+      _hasError = false;
       return;
     }
 
@@ -58,6 +81,13 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       ContextModel cm = ContextModel();
       double result = exp.evaluate(EvaluationType.REAL, cm);
 
+      // Check for invalid results
+      if (result.isNaN || result.isInfinite) {
+        _result = 'Error';
+        _hasError = true;
+        return;
+      }
+
       // Format the result
       if (result == result.toInt()) {
         _result = result.toInt().toString();
@@ -70,10 +100,25 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         double val = double.parse(_result);
         _result = val.toStringAsExponential(5);
       }
+
+      _hasError = false;
     } catch (e) {
-      _result = 'Error';
-      _hasError = true;
+      // Only show error for actual invalid expressions, not incomplete ones
+      if (!_isIncompleteExpression(_expression)) {
+        _result = 'Error';
+        _hasError = true;
+      }
     }
+  }
+
+  bool _isIncompleteExpression(String expression) {
+    if (expression.isEmpty) return false;
+
+    // Check if expression ends with an operator
+    final operators = ['+', '-', '×', '÷', '*', '/', '('];
+    final lastChar = expression.trim().substring(expression.trim().length - 1);
+
+    return operators.contains(lastChar);
   }
 
   String _handlePercentage(String expression) {

@@ -9,7 +9,8 @@ class CurrencyConverterScreen extends StatefulWidget {
   State<CurrencyConverterScreen> createState() => _CurrencyConverterScreenState();
 }
 
-class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
+class _CurrencyConverterScreenState extends State<CurrencyConverterScreen>
+    with TickerProviderStateMixin {
   final TextEditingController _amountController = TextEditingController();
   String _fromCurrency = 'USD';
   String _toCurrency = 'EUR';
@@ -20,16 +21,73 @@ class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
   final List<Map<String, String>> _currencies = CurrencyService.getSupportedCurrencies();
   int _selectedIndex = 0;
 
+  // Animation controllers
+  late AnimationController _pulseController;
+  late AnimationController _slideController;
+  late AnimationController _bounceController;
+  late Animation<double> _pulseAnimation;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _bounceAnimation;
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize animation controllers
+    _pulseController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _bounceController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    // Initialize animations
+    _pulseAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.2,
+    ).animate(CurvedAnimation(
+      parent: _pulseController,
+      curve: Curves.easeInOut,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.elasticOut,
+    ));
+
+    _bounceAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _bounceController,
+      curve: Curves.bounceOut,
+    ));
+
     _amountController.text = '1';
     _convertCurrency();
     _getLastUpdateTime();
+
+    // Start entrance animations
+    _slideController.forward();
+    _bounceController.forward();
   }
 
   @override
   void dispose() {
+    _pulseController.dispose();
+    _slideController.dispose();
+    _bounceController.dispose();
     _amountController.dispose();
     super.dispose();
   }
@@ -128,13 +186,78 @@ class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
     );
   }
 
+  double _getExchangeRate() {
+    if (_convertedAmount == null) return 0.0;
+    final amount = double.tryParse(_amountController.text.trim()) ?? 0.0;
+    if (amount == 0.0) return 0.0;
+    return _convertedAmount! / amount;
+  }
+
+  Widget _buildFloatingParticle(double top, double left, double size, Color color) {
+    return AnimatedBuilder(
+      animation: _pulseAnimation,
+      builder: (context, child) {
+        return Positioned(
+          top: top,
+          left: left,
+          child: Transform.scale(
+            scale: _pulseAnimation.value,
+            child: Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withOpacity(0.2),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Currency Converter',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Row(
+          children: [
+            AnimatedBuilder(
+              animation: _bounceAnimation,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _bounceAnimation.value,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.currency_exchange,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Currency Converter',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+          ],
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -146,42 +269,88 @@ class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
               colors: [
                 Theme.of(context).colorScheme.primary,
                 Theme.of(context).colorScheme.secondary,
+                Theme.of(context).colorScheme.tertiary,
               ],
+              stops: const [0.0, 0.6, 1.0],
             ),
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refreshRates,
-            tooltip: 'Refresh Rates',
+          AnimatedBuilder(
+            animation: _pulseAnimation,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: 0.8 + (_pulseAnimation.value - 0.8) * 0.3,
+                child: Container(
+                  margin: const EdgeInsets.only(right: 16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.2),
+                        Colors.white.withOpacity(0.1),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.refresh, color: Colors.white),
+                    onPressed: _refreshRates,
+                    tooltip: 'Refresh Rates',
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _refreshRates,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                child: Card(
-                  elevation: 12,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Theme.of(context).colorScheme.surface,
-                          Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                        ],
-                      ),
-                    ),
+      body: Stack(
+        children: [
+          // Floating background particles
+          _buildFloatingParticle(100, 50, 80, Theme.of(context).colorScheme.primary),
+          _buildFloatingParticle(200, 300, 60, Theme.of(context).colorScheme.secondary),
+          _buildFloatingParticle(350, 100, 40, Theme.of(context).colorScheme.tertiary),
+          _buildFloatingParticle(500, 250, 100, Theme.of(context).colorScheme.primary),
+          _buildFloatingParticle(50, 200, 50, Theme.of(context).colorScheme.secondary),
+
+          // Main content
+          RefreshIndicator(
+            onRefresh: _refreshRates,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16.0),
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+              AnimatedBuilder(
+                animation: _bounceAnimation,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: 0.95 + (_bounceAnimation.value * 0.05),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      child: Card(
+                        elevation: 12 + (_bounceAnimation.value * 4),
+                        shadowColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Theme.of(context).colorScheme.surface,
+                                Theme.of(context).colorScheme.primaryContainer.withOpacity(0.1),
+                                Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                              ],
+                              stops: const [0.0, 0.5, 1.0],
+                            ),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                              width: 2,
+                            ),
+                          ),
                     child: Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Column(
@@ -231,8 +400,11 @@ class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
                         ],
                       ),
                     ),
-                  ),
-                ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 16),
               AnimatedContainer(
@@ -277,6 +449,7 @@ class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
                           Row(
                             children: [
                               Expanded(
+                                flex: 2,
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -316,32 +489,39 @@ class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
                                         items: _currencies.map((currency) {
                                           return DropdownMenuItem(
                                             value: currency['code'],
-                                            child: Row(
-                                              children: [
-                                                Text(
-                                                  currency['flag']!,
-                                                  style: const TextStyle(fontSize: 18),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  currency['code']!,
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 16,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Expanded(
-                                                  child: Text(
-                                                    '- ${currency['name']!}',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      color: Colors.grey.shade600,
+                                            child: LayoutBuilder(
+                                              builder: (context, constraints) {
+                                                return Row(
+                                                  children: [
+                                                    Text(
+                                                      currency['flag']!,
+                                                      style: const TextStyle(fontSize: 16),
                                                     ),
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                              ],
+                                                    const SizedBox(width: 6),
+                                                    Text(
+                                                      currency['code']!,
+                                                      style: const TextStyle(
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                    if (constraints.maxWidth > 120) ...[
+                                                      const SizedBox(width: 4),
+                                                      Expanded(
+                                                        child: Text(
+                                                          '- ${currency['name']!}',
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            color: Colors.grey.shade600,
+                                                          ),
+                                                          overflow: TextOverflow.ellipsis,
+                                                          maxLines: 1,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                );
+                                              },
                                             ),
                                           );
                                         }).toList(),
@@ -358,49 +538,74 @@ class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: 8),
                               Column(
                                 children: [
                                   const SizedBox(height: 32),
-                                  AnimatedRotation(
-                                    turns: _selectedIndex / 4,
-                                    duration: const Duration(milliseconds: 500),
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            Theme.of(context).colorScheme.primary,
-                                            Theme.of(context).colorScheme.secondary,
-                                          ],
-                                        ),
-                                        borderRadius: BorderRadius.circular(50),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 4),
+                                  AnimatedBuilder(
+                                    animation: _pulseAnimation,
+                                    builder: (context, child) {
+                                      return Transform.scale(
+                                        scale: 0.9 + (_pulseAnimation.value - 0.8) * 0.2,
+                                        child: AnimatedRotation(
+                                          turns: _selectedIndex / 4,
+                                          duration: const Duration(milliseconds: 800),
+                                          curve: Curves.elasticOut,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Theme.of(context).colorScheme.primary,
+                                                  Theme.of(context).colorScheme.secondary,
+                                                  Theme.of(context).colorScheme.tertiary,
+                                                ],
+                                                stops: const [0.0, 0.5, 1.0],
+                                              ),
+                                              borderRadius: BorderRadius.circular(50),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                                                  blurRadius: 15,
+                                                  offset: const Offset(0, 6),
+                                                  spreadRadius: 2,
+                                                ),
+                                                BoxShadow(
+                                                  color: Colors.white.withOpacity(0.2),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(-2, -2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Material(
+                                              color: Colors.transparent,
+                                              child: InkWell(
+                                                borderRadius: BorderRadius.circular(50),
+                                                onTap: () {
+                                                  _swapCurrencies();
+                                                  setState(() {
+                                                    _selectedIndex++;
+                                                  });
+                                                },
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(16),
+                                                  child: const Icon(
+                                                    Icons.swap_horiz,
+                                                    color: Colors.white,
+                                                    size: 32,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
                                           ),
-                                        ],
-                                      ),
-                                      child: IconButton(
-                                        onPressed: () {
-                                          _swapCurrencies();
-                                          setState(() {
-                                            _selectedIndex++;
-                                          });
-                                        },
-                                        icon: const Icon(
-                                          Icons.swap_horiz,
-                                          color: Colors.white,
                                         ),
-                                        iconSize: 28,
-                                      ),
-                                    ),
+                                      );
+                                    },
                                   ),
                                 ],
                               ),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: 8),
                               Expanded(
+                                flex: 2,
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -427,6 +632,7 @@ class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
                                       child: DropdownButtonFormField<String>(
                                         value: _toCurrency,
                                         isExpanded: true,
+                                        isDense: true,
                                         decoration: InputDecoration(
                                           filled: true,
                                           fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
@@ -434,36 +640,44 @@ class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
                                             Icons.payments,
                                             color: Theme.of(context).colorScheme.primary,
                                           ),
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                         ),
                                         items: _currencies.map((currency) {
                                           return DropdownMenuItem(
                                             value: currency['code'],
-                                            child: Row(
-                                              children: [
-                                                Text(
-                                                  currency['flag']!,
-                                                  style: const TextStyle(fontSize: 18),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  currency['code']!,
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 16,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Expanded(
-                                                  child: Text(
-                                                    '- ${currency['name']!}',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      color: Colors.grey.shade600,
+                                            child: LayoutBuilder(
+                                              builder: (context, constraints) {
+                                                return Row(
+                                                  children: [
+                                                    Text(
+                                                      currency['flag']!,
+                                                      style: const TextStyle(fontSize: 16),
                                                     ),
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                              ],
+                                                    const SizedBox(width: 6),
+                                                    Text(
+                                                      currency['code']!,
+                                                      style: const TextStyle(
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                    if (constraints.maxWidth > 120) ...[
+                                                      const SizedBox(width: 4),
+                                                      Expanded(
+                                                        child: Text(
+                                                          '- ${currency['name']!}',
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            color: Colors.grey.shade600,
+                                                          ),
+                                                          overflow: TextOverflow.ellipsis,
+                                                          maxLines: 1,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                );
+                                              },
                                             ),
                                           );
                                         }).toList(),
@@ -489,23 +703,45 @@ class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 500),
-                curve: Curves.easeInOut,
-                child: Card(
-                  elevation: 15,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Theme.of(context).colorScheme.surface,
-                          Theme.of(context).colorScheme.tertiaryContainer.withOpacity(0.2),
-                        ],
-                      ),
-                    ),
+              AnimatedBuilder(
+                animation: _bounceAnimation,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: 0.95 + (_bounceAnimation.value * 0.05),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeInOut,
+                      child: Card(
+                        elevation: 15 + (_bounceAnimation.value * 10),
+                        shadowColor: _convertedAmount != null
+                            ? Colors.green.withOpacity(0.3)
+                            : Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: _convertedAmount != null
+                                  ? [
+                                      Colors.green.shade50,
+                                      Colors.green.shade100.withOpacity(0.3),
+                                      Theme.of(context).colorScheme.surface,
+                                    ]
+                                  : [
+                                      Theme.of(context).colorScheme.surface,
+                                      Theme.of(context).colorScheme.primaryContainer.withOpacity(0.1),
+                                      Theme.of(context).colorScheme.tertiaryContainer.withOpacity(0.2),
+                                    ],
+                              stops: const [0.0, 0.3, 1.0],
+                            ),
+                            border: Border.all(
+                              color: _convertedAmount != null
+                                  ? Colors.green.withOpacity(0.2)
+                                  : Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                              width: 2,
+                            ),
+                          ),
                     child: Padding(
                       padding: const EdgeInsets.all(24.0),
                       child: Column(
@@ -630,29 +866,72 @@ class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
                                     color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                  child: Column(
                                     children: [
-                                      Text(
-                                        '${_amountController.text} $_fromCurrency',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: Theme.of(context).colorScheme.onSurface,
+                                      // Ana çevrim sonucu
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            '${_amountController.text} $_fromCurrency',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: Theme.of(context).colorScheme.onSurface,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Icon(
+                                            Icons.arrow_forward,
+                                            color: Theme.of(context).colorScheme.primary,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            _formatCurrency(_convertedAmount!, _toCurrency),
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.green.shade600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      // 1 birim çevrim oranı
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.shade50,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Colors.blue.shade200),
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Icon(
-                                        Icons.arrow_forward,
-                                        color: Theme.of(context).colorScheme.primary,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        _formatCurrency(_convertedAmount!, _toCurrency),
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.green.shade600,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              '1 $_fromCurrency',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                                color: Colors.blue.shade700,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Icon(
+                                              Icons.swap_horiz,
+                                              size: 16,
+                                              color: Colors.blue.shade700,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              _formatCurrency(_getExchangeRate(), _toCurrency),
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                                color: Colors.blue.shade700,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ],
@@ -743,8 +1022,11 @@ class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
                         ],
                       ),
                     ),
-                  ),
-                ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 16),
               if (_lastUpdated != null)
@@ -840,9 +1122,12 @@ class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
                   ),
                 ),
               ),
-            ],
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

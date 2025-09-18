@@ -1,5 +1,5 @@
 name: currencyconverter
-description: "A Flutter app that combines a currency converter and calculator"
+description: "Convert currencies with live exchange rates and perform calculations. Features 30+ currencies with flags, pull-to-refresh rates, and a comprehensive calculator with history."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -34,6 +34,7 @@ dependencies:
   http: ^1.1.0
   intl: ^0.18.1
   math_expressions: ^2.4.0
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:

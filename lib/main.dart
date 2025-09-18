@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/currency_converter_screen.dart';
 import 'screens/calculator_screen.dart';
+import 'screens/onboarding_screen.dart';
 
 void main() {
   runApp(const CurrencyCalculatorApp());
@@ -86,8 +88,67 @@ class CurrencyCalculatorApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const MainScreen(),
+      home: const AppWrapper(),
     );
+  }
+}
+
+class AppWrapper extends StatefulWidget {
+  const AppWrapper({super.key});
+
+  @override
+  State<AppWrapper> createState() => _AppWrapperState();
+}
+
+class _AppWrapperState extends State<AppWrapper> {
+  bool _showOnboarding = true;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOnboardingStatus();
+  }
+
+  Future<void> _checkOnboardingStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bool hasCompletedOnboarding = prefs.getBool('onboarding_completed') ?? false;
+
+      setState(() {
+        _showOnboarding = !hasCompletedOnboarding;
+        _isLoading = false;
+      });
+    } catch (e) {
+      // If there's an error, show onboarding to be safe
+      setState(() {
+        _showOnboarding = true;
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _completeOnboarding() {
+    setState(() {
+      _showOnboarding = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_showOnboarding) {
+      return OnboardingScreen(onComplete: _completeOnboarding);
+    }
+
+    return const MainScreen();
   }
 }
 
@@ -110,6 +171,58 @@ class _MainScreenState extends State<MainScreen> {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  Future<void> _showTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_completed', false);
+
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const AppWrapper(),
+        ),
+      );
+    }
+  }
+
+  void _showTutorialDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.school,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              const Text('Tutorial'),
+            ],
+          ),
+          content: const Text(
+            'Would you like to see the app tutorial again? This will show you how to use all the features.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _showTutorial();
+              },
+              child: const Text('Show Tutorial'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -145,7 +258,13 @@ class _MainScreenState extends State<MainScreen> {
         ),
         child: NavigationBar(
           selectedIndex: _selectedIndex,
-          onDestinationSelected: _onItemTapped,
+          onDestinationSelected: (index) {
+            if (index == 2) {
+              _showTutorialDialog();
+            } else {
+              _onItemTapped(index);
+            }
+          },
           elevation: 0,
           backgroundColor: Theme.of(context).colorScheme.surface,
           indicatorColor: Theme.of(context).colorScheme.primaryContainer,
@@ -179,6 +298,21 @@ class _MainScreenState extends State<MainScreen> {
                 ),
               ),
               label: 'Calculator',
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.school_outlined),
+              selectedIcon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.school,
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
+              ),
+              label: 'Tutorial',
             ),
           ],
         ),
